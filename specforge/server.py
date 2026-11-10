@@ -9,18 +9,22 @@ from __future__ import annotations
 
 from fastmcp import FastMCP
 
+from specforge.graph import run
+
 mcp = FastMCP("specforge")
 
 
 @mcp.tool()
-def forge_spec(request: str) -> dict:
-    """Turn a one-line feature request into a spec-driven document.
+def forge_spec(request: str, answers: dict[str, str] | None = None) -> dict:
+    """Turn a one-line feature request into a plan and a spec-driven document.
 
-    Runs the Supervisor -> Plan Agent -> Spec Writer pipeline and returns the
-    final state (including ``plan_path`` and ``spec_path``).
+    Runs Supervisor -> Plan Agent -> Spec Writer. If required context is missing the result
+    has status "gathering" and `questions`; call again with the same request and `answers`
+    (field -> answer). On success, `state` holds `plan_path` and `spec_path`.
     """
-    # TODO: call specforge.graph.run(request) and serialise the resulting AgentState.
-    raise NotImplementedError("forge_spec is a scaffold stub — see plans/.")
+    result = run(request, answers=answers)
+    result["trace"] = [{k: v for k, v in e.items() if k != "state_snapshot"} for e in result["trace"]]
+    return result
 
 
 def main() -> None:

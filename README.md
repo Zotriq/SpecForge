@@ -3,13 +3,24 @@
 Sequential multi-agent CLI tool that turns a one-line feature request
 ("I wanna build X") into a structured, spec-driven document.
 
+**[Live demo →](https://zotriq-demos.streamlit.app/specforge)**
+
 SpecForge runs as an MCP server connected to Claude Code and orchestrates
 three agents that hand off a single shared state object in sequence, with
 every tool call traced:
 
-1. **Supervisor** — gathers feature context, asks the user for anything missing.
-2. **Plan Agent** — proposes an implementation plan, writes `.claude/plans/<feature>.md`.
-3. **Spec Writer** — turns the plan into a spec-driven doc, writes `.claude/spec/<feature>.md`.
+1. **Supervisor**: reads the project overview (`CLAUDE.md`) once, extracts the feature context
+   (name, description, target layer, data source, user-facing, tech stack) and, if anything is
+   missing, stops and returns questions instead of guessing.
+2. **Plan Agent**: reuses an existing plan if there is one, otherwise writes
+   `.claude/plans/<feature>.md` (Goal, Approach, Steps, Risks).
+3. **Spec Writer**: reads the plan (from the run cache) and writes `.claude/spec/<feature>.md`
+   (Overview, Requirements, Data model, Interfaces, Acceptance criteria, Out of scope).
+
+Every file operation is a typed tool wrapped by `traced_tool` (pre-hook trace with agent, tool,
+state snapshot and reasoning; input and output validated with Pydantic). Each agent's output passes a
+post-hook schema check, and a bad output halts the pipeline instead of flowing downstream. File access
+is scoped to `.claude/plans/` and `.claude/spec/`.
 
 ## Goals (priority order)
 
@@ -23,7 +34,8 @@ every tool call traced:
 | Concern | Library |
 | --- | --- |
 | Orchestration graph & state | LangGraph |
-| Agent construction (ReAct), tool binding, prompts | LangChain |
+| Typed, traced tools (StructuredTool) | LangChain |
+| LLM (any OpenAI-compatible API, Groq by default) | OpenAI SDK |
 | MCP server (stdio transport) | FastMCP |
 | Optional tracing dashboard / debug HTTP endpoints | FastAPI |
 | Schemas & output validation | Pydantic |
@@ -37,12 +49,20 @@ py -m venv .venv
 pip install -e ".[dev]"
 ```
 
+Set `GROQ_API_KEY` (or `SPECFORGE_API_KEY` with `SPECFORGE_BASE_URL` / `SPECFORGE_MODEL` for any
+OpenAI-compatible endpoint; default model `openai/gpt-oss-120b` on Groq).
+
 ## Commands
 
-- `pytest` — run all unit and integration tests
-- `pytest tests/unit` — agent/tool-level tests only
-- `pytest tests/integration` — full pipeline runs (mocked LLM calls)
-- `python -m specforge.server` — start the MCP server (stdio transport)
+- `python -m specforge "I wanna build a wishlist"`: run once from the terminal (asks for missing context)
+- `python -m specforge.server`: start the MCP server (stdio); the `forge_spec(request, answers)` tool
+- `pytest`: unit and integration tests (LLM calls faked, no keys needed)
+
+Add it to Claude Code:
+
+```bash
+claude mcp add specforge -- python -m specforge.server
+```
 
 ## Layout
 

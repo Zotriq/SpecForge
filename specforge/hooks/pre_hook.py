@@ -1,13 +1,7 @@
-"""Pre-hook — runs before every tool call.
+"""Pre-hook: runs before every tool call.
 
-Logs, via the real-time CLI tracer:
-  * calling agent
-  * tool name
-  * a snapshot of current AgentState
-  * a status label: reading_file | understanding | generating_plan | writing_spec | output
-
-Also captures the agent's chain-of-thought reasoning trace for the step
-(never discarded).
+Logs, via the real-time tracer: calling agent, tool name, a snapshot of current
+AgentState, a status label, and the agent's reasoning for the step (never discarded).
 """
 
 from __future__ import annotations
@@ -16,9 +10,9 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-StatusLabel = Literal[
-    "reading_file", "understanding", "generating_plan", "writing_spec", "output"
-]
+from specforge.tracing.logger import emit
+
+StatusLabel = Literal["reading_file", "understanding", "generating_plan", "writing_spec", "output"]
 
 
 class PreHookPayload(BaseModel):
@@ -30,4 +24,4 @@ class PreHookPayload(BaseModel):
 
 
 def pre_hook(payload: PreHookPayload) -> None:
-    raise NotImplementedError("pre_hook is a scaffold stub — see plans/.")
+    emit("tool_call", **payload.model_dump())

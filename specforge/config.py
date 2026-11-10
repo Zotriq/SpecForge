@@ -11,10 +11,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SPECFORGE_", env_file=".env", extra="ignore")
 
-    # LLM
-    model: str = "claude-sonnet-5"
+    # LLM: any OpenAI-compatible endpoint (default: Groq). Key from SPECFORGE_API_KEY or GROQ_API_KEY.
+    model: str = "openai/gpt-oss-120b"
+    base_url: str = "https://api.groq.com/openai/v1"
+    api_key: str | None = None
     temperature: float = 0.0
     max_react_iterations: int = 8
+
+    # The project overview the Supervisor reads once per run (read-only, outside the write scope).
+    project_overview: Path = Field(default=Path("CLAUDE.md"))
 
     # File I/O scope — the File I/O plugin refuses paths outside these roots.
     plans_dir: Path = Field(default=Path(".claude/plans"))
